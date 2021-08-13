@@ -1,36 +1,50 @@
-use findomain::{
-    args, errors::*, get_subdomains, read_from_file, return_file_targets, update_checker,
+use {
+    findomain::{
+        args, errors::*, files::read_from_file, files::return_file_targets, get_subdomains,
+        structs::Args,
+    },
+    std::{collections::HashSet, iter::FromIterator},
 };
 
 fn run() -> Result<()> {
     let mut arguments = args::get_args();
-    if arguments.check_updates {
-        update_checker::main(&mut arguments)?
+    if !arguments.filter_by_string.is_empty()
+        && !arguments.exclude_by_string.is_empty()
+        && arguments
+            .filter_by_string
+            .difference(&arguments.exclude_by_string)
+            .next()
+            .is_none()
+    {
+        eprintln!("Wait, you are filtering and excluding exactly the same keywords? Please check and try again. \nFiltering keywords: {:?} \nExcluding keywords: {:?}", arguments.filter_by_string, arguments.exclude_by_string);
+        std::process::exit(1)
     }
-    if arguments.threads > 500 {
-        arguments.threads = 500
-    }
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(arguments.threads)
-        .build_global()
-        .unwrap();
+    manage_threads(&mut arguments);
     if arguments.bruteforce {
-        if !arguments.only_resolved && !arguments.with_ip && !arguments.ipv6_only {
-            println!("To use Findomain bruteforce method, use one of the --resolved/-r, --ip/-i or --ipv6-only options.");
+        if !arguments.discover_ip && !arguments.http_status && !arguments.enable_port_scan {
+            println!("To use Findomain bruteforce method, use one of the --resolved/-r, --ip/-i, --ipv6-only, --http-status or --pscan/--iport/--lport options.");
             std::process::exit(1)
         } else {
             let wordlists = arguments.wordlists.clone();
-            arguments.wordlists_data = return_file_targets(&mut arguments, wordlists)
+            arguments.wordlists_data =
+                HashSet::from_iter(return_file_targets(&arguments, wordlists))
         }
     }
-    if !arguments.target.is_empty() {
+    if !arguments.target.is_empty() || arguments.query_jobname {
         get_subdomains(&mut arguments)
-    } else if !arguments.files.is_empty() {
+    } else if !arguments.files.is_empty() || arguments.from_stdin || arguments.query_jobname {
         read_from_file(&mut arguments)
     } else {
         eprintln!("Error: Target is empty or invalid!");
         std::process::exit(1)
     }
+}
+
+fn manage_threads(arguments: &mut Args) {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(arguments.threads)
+        .build_global()
+        .unwrap()
 }
 
 fn main() {

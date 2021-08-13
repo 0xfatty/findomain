@@ -4,4 +4,6 @@ test.*
 *.txt
 domains
 *.csv
-*.json
+findomain.toml
+configtest.toml
+/screenshots
