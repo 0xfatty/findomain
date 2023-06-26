@@ -1,9 +1,14 @@
+use std::ffi::OsStr;
+
 use {
     crate::{args, utils},
     headless_chrome::{Browser, LaunchOptionsBuilder},
     rand::{seq::SliceRandom, thread_rng},
     reqwest::blocking::Client,
-    std::io::{self, Read},
+    std::{
+        collections::HashSet,
+        io::{self, Read},
+    },
 };
 
 lazy_static! {
@@ -13,6 +18,7 @@ lazy_static! {
     };
 }
 
+#[must_use]
 pub fn return_reqwest_client(secs: u64) -> Client {
     let user_agent = utils::return_random_string(USER_AGENTS.clone());
     Client::builder()
@@ -22,11 +28,15 @@ pub fn return_reqwest_client(secs: u64) -> Client {
         .unwrap()
 }
 
+#[must_use]
 pub fn return_headless_browser(sandbox: bool) -> Browser {
     match Browser::new(
         LaunchOptionsBuilder::default()
             .sandbox(sandbox)
+            // Emulate a high res window size to avoid pages being incomplete
             .window_size(Some((1920, 2500)))
+            .ignore_certificate_errors(true)
+            .args(vec![OsStr::new("--disable-crash-reporter")])
             .build()
             .expect("Could not find appropriate Chrome binary."),
     ) {
@@ -34,12 +44,13 @@ pub fn return_headless_browser(sandbox: bool) -> Browser {
         Err(e) => {
             eprintln!("Error getting the Chrome/Chromium instance, make sure that it's properly installed.
 Chromium/Chrome from Snap are known to cause problems, if you have installed it from there,
-please uninstall it and reinstall without using Snap. Error: {}", e);
+please uninstall it and reinstall without using Snap. Error: {e}");
             std::process::exit(1)
         }
     }
 }
 
+#[must_use]
 pub fn calculate_timeout(threads: usize, timeout: u64) -> u64 {
     if timeout <= 500 {
         if threads >= 50 {
@@ -58,6 +69,7 @@ pub fn calculate_timeout(threads: usize, timeout: u64) -> u64 {
     }
 }
 
+#[must_use]
 pub fn read_stdin() -> Vec<String> {
     let mut buffer = String::new();
     let mut stdin = io::stdin();
@@ -70,10 +82,32 @@ pub fn read_stdin() -> Vec<String> {
     targets
 }
 
+#[must_use]
 pub fn return_random_string(strings: Vec<String>) -> String {
     if strings.is_empty() {
         String::new()
     } else {
         strings.choose(&mut thread_rng()).unwrap().to_string()
     }
+}
+
+#[must_use]
+pub fn hashset_to_string(delimiter: &str, hashset: HashSet<String>) -> String {
+    hashset.into_iter().collect::<Vec<String>>().join(delimiter)
+}
+
+pub fn split_string_at_len(string: &str, len: usize) -> Vec<String> {
+    let mut strings = Vec::new();
+    let mut current_string = String::new();
+    // split at newlines to make sure we don't split a line in half
+    for line in string.split('\n') {
+        if current_string.len() + line.len() + 1 > len {
+            strings.push(current_string);
+            current_string = String::new();
+        }
+        current_string.push_str(line);
+        current_string.push('\n');
+    }
+    strings.push(current_string);
+    strings
 }

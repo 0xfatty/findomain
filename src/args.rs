@@ -16,6 +16,7 @@ use {
 };
 
 #[allow(clippy::cognitive_complexity)]
+#[must_use]
 pub fn get_args() -> Args {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml)
@@ -64,11 +65,11 @@ pub fn get_args() -> Args {
         telegram_webhook: String::new(),
         telegram_chat_id: return_value_or_default(&settings, "telegram_chat_id", String::new()),
         spyse_access_token: return_value_or_default(&settings, "spyse_token", String::new())
-            .split(',')
+            .split_terminator(',')
             .map(str::to_owned)
             .collect(),
         facebook_access_token: return_value_or_default(&settings, "fb_token", String::new())
-            .split(',')
+            .split_terminator(',')
             .map(str::to_owned)
             .collect(),
         virustotal_access_token: return_value_or_default(
@@ -76,7 +77,7 @@ pub fn get_args() -> Args {
             "virustotal_token",
             String::new(),
         )
-        .split(',')
+        .split_terminator(',')
         .map(str::to_owned)
         .collect(),
         securitytrails_access_token: return_value_or_default(
@@ -84,7 +85,7 @@ pub fn get_args() -> Args {
             "securitytrails_token",
             String::new(),
         )
-        .split(',')
+        .split_terminator(',')
         .map(str::to_owned)
         .collect(),
         certspotter_access_token: return_value_or_default(
@@ -92,12 +93,32 @@ pub fn get_args() -> Args {
             "certspotter_token",
             String::new(),
         )
-        .split(',')
+        .split_terminator(',')
         .map(str::to_owned)
         .collect(),
         user_agent: String::new(),
         c99_api_key: return_value_or_default(&settings, "c99_api_key", String::new())
-            .split(',')
+            .split_terminator(',')
+            .map(str::to_owned)
+            .collect(),
+        bufferover_free_api_key: return_value_or_default(
+            &settings,
+            "bufferover_free_api_key",
+            String::new(),
+        )
+        .split_terminator(',')
+        .map(str::to_owned)
+        .collect(),
+        bufferover_paid_api_key: return_value_or_default(
+            &settings,
+            "bufferover_paid_api_key",
+            String::new(),
+        )
+        .split_terminator(',')
+        .map(str::to_owned)
+        .collect(),
+        fullhunt_api_key: return_value_or_default(&settings, "fullhunt_api_key", String::new())
+            .split_terminator(',')
             .map(str::to_owned)
             .collect(),
         jobname: if matches.is_present("jobname") {
@@ -109,14 +130,53 @@ pub fn get_args() -> Args {
             .unwrap_or_else(|_| String::from("screenshots")),
         external_subdomains_dir_amass: String::from("external_subdomains/amass"),
         external_subdomains_dir_subfinder: String::from("external_subdomains/subfinder"),
-        threads: value_t!(matches, "threads", usize).unwrap_or_else(|_| {
-            return_value_or_default(&settings, "threads", 50.to_string())
-                .parse::<usize>()
-                .unwrap()
-        }),
         version: clap::crate_version!().to_string(),
         database_checker_counter: 0,
         commit_to_db_counter: 0,
+        // let's keep compatibility with the deprecated --threads option, for now...
+        lightweight_threads: value_t!(matches, "lightweight-threads", usize).unwrap_or_else(|_| {
+            value_t!(matches, "threads", usize).unwrap_or_else(|_| {
+                return_value_or_default(&settings, "lightweight_threads", 50.to_string())
+                    .parse::<usize>()
+                    .unwrap_or_else(|_| {
+                        return_value_or_default(&settings, "threads", 50.to_string())
+                            .parse::<usize>()
+                            .unwrap()
+                    })
+            })
+        }),
+        screenshots_threads: value_t!(matches, "screenshots-threads", usize).unwrap_or_else(|_| {
+            return_value_or_default(&settings, "screenshots_threads", 10.to_string())
+                .parse::<usize>()
+                .unwrap()
+        }),
+        parallel_ip_ports_scan: value_t!(matches, "parallel-ip-ports-scan", usize).unwrap_or_else(
+            |_| {
+                return_value_or_default(&settings, "parallel_ip_ports_scan", 10.to_string())
+                    .parse::<usize>()
+                    .unwrap()
+            },
+        ),
+        max_http_redirects: value_t!(matches, "max-http-redirects", usize).unwrap_or_else(|_| {
+            return_value_or_default(&settings, "max_http_redirects", 0.to_string())
+                .parse::<usize>()
+                .unwrap()
+        }),
+        tcp_connect_threads: value_t!(matches, "tcp-connect-threads", usize).unwrap_or_else(|_| {
+            return_value_or_default(&settings, "screenshots_threads", 500.to_string())
+                .parse::<usize>()
+                .unwrap()
+        }),
+        resolver_timeout: value_t!(matches, "resolver-timeout", u64).unwrap_or_else(|_| {
+            return_value_or_default(&settings, "resolver_timeout", 3.to_string())
+                .parse::<u64>()
+                .unwrap()
+        }),
+        http_retries: value_t!(matches, "http-retries", usize).unwrap_or_else(|_| {
+            return_value_or_default(&settings, "http_retries", 2.to_string())
+                .parse::<usize>()
+                .unwrap()
+        }),
         rate_limit: if matches.is_present("rate-limit") {
             value_t!(matches, "rate-limit", u64).unwrap_or_else(|_| 5)
         } else {
@@ -131,6 +191,7 @@ pub fn get_args() -> Args {
                 .parse::<u64>()
                 .unwrap()
         },
+        tcp_connect_timeout: value_t!(matches, "tcp-connect-timeout", u64).unwrap_or_else(|_| 2000),
         initial_port: value_t!(matches, "initial-port", u16).unwrap_or_else(|_| 1),
         last_port: value_t!(matches, "last-port", u16).unwrap_or_else(|_| 1000),
         only_resolved: matches.is_present("resolved"),
@@ -140,7 +201,6 @@ pub fn get_args() -> Args {
         monitoring_flag: matches.is_present("monitoring-flag"),
         from_file_flag: matches.is_present("files"),
         quiet_flag: matches.is_present("quiet"),
-        with_imported_subdomains: matches.is_present("import-subdomains"),
         query_database: matches.is_present("query-database"),
         enable_dot: eval_resolved_or_ip_present(
             matches.is_present("enable-dot"),
@@ -190,8 +250,23 @@ pub fn get_args() -> Args {
         query_jobname: matches.is_present("query-jobname"),
         no_resolve: matches.is_present("no-resolve"),
         external_subdomains: matches.is_present("external-subdomains"),
+        validate_subdomains: matches.is_present("validate-subdomains"),
+        disable_double_dns_check: matches.is_present("no-double-dns-check")
+            || !matches.is_present("custom-resolvers"),
+        reset_database: matches.is_present("reset-database"),
+        custom_ports_range: matches.is_present("initial-port") || matches.is_present("last-port"),
+        no_discover: matches.is_present("no-discover"),
         files: return_matches_vec(&matches, "files"),
-        import_subdomains_from: return_matches_vec(&matches, "import-subdomains"),
+        import_subdomains_from: {
+            let mut paths_from_config_file =
+                return_value_or_default(&settings, "import_subdomains_from", String::new())
+                    .split_terminator(',')
+                    .map(str::to_owned)
+                    .collect();
+            let mut import_subdomains_from = return_matches_vec(&matches, "import-subdomains");
+            import_subdomains_from.append(&mut paths_from_config_file);
+            import_subdomains_from
+        },
         wordlists: return_matches_vec(&matches, "wordlists"),
         resolvers: if matches.is_present("custom-resolvers") {
             return_matches_vec(&matches, "custom-resolvers")
@@ -200,9 +275,9 @@ pub fn get_args() -> Args {
         },
         user_agent_strings: {
             let file_name = if matches.is_present("user-agents-file") {
-                value_t!(matches, "user-agents-file", String).unwrap_or_else(|_| "".to_string())
+                value_t!(matches, "user-agents-file", String).unwrap_or_else(|_| String::new())
             } else {
-                return_value_or_default(&settings, "user_agents_file", "".to_string())
+                return_value_or_default(&settings, "user_agents_file", String::new())
                     .parse::<String>()
                     .unwrap()
             };
@@ -236,7 +311,7 @@ pub fn get_args() -> Args {
             return_matches_hashset(&matches, "exclude-sources")
         } else {
             return_value_or_default(&settings, "exclude_sources", String::new())
-                .split(',')
+                .split_terminator(',')
                 .map(str::to_owned)
                 .collect()
         },
@@ -248,22 +323,24 @@ fn return_settings(
     matches: &clap::ArgMatches,
     settings: &mut config::Config,
 ) -> HashMap<String, String> {
-    if matches.is_present("config-file") {
-        match settings.merge(config::File::with_name(
-            &value_t!(matches, "config-file", String).unwrap(),
-        )) {
+    if matches.is_present("config-file") || std::env::var("FINDOMAIN_CONFIG_FILE").is_ok() {
+        let config_filename = match std::env::var("FINDOMAIN_CONFIG_FILE") {
+            Ok(config) => config,
+            Err(_) => value_t!(matches, "config-file", String).unwrap(),
+        };
+        match settings.merge(config::File::with_name(&config_filename)) {
             Ok(settings) => match settings.merge(config::Environment::with_prefix("FINDOMAIN")) {
                 Ok(settings) => settings
                     .clone()
                     .try_into::<HashMap<String, String>>()
                     .unwrap(),
                 Err(e) => {
-                    eprintln!("Error merging environment variables into settings: {}", e);
+                    eprintln!("Error merging environment variables into settings: {e}");
                     std::process::exit(1)
                 }
             },
             Err(e) => {
-                eprintln!("Error reading config file: {}", e);
+                eprintln!("Error reading config file: {e}");
                 std::process::exit(1)
             }
         }
@@ -280,12 +357,12 @@ fn return_settings(
                     .try_into::<HashMap<String, String>>()
                     .unwrap(),
                 Err(e) => {
-                    eprintln!("Error merging environment variables into settings: {}", e);
+                    eprintln!("Error merging environment variables into settings: {e}");
                     std::process::exit(1)
                 }
             },
             Err(e) => {
-                eprintln!("Error reading config file: {}", e);
+                eprintln!("Error reading config file: {e}");
                 std::process::exit(1)
             }
         }
@@ -296,7 +373,7 @@ fn return_settings(
                 .try_into::<HashMap<String, String>>()
                 .unwrap(),
             Err(e) => {
-                eprintln!("Error merging environment variables into settings: {}", e);
+                eprintln!("Error merging environment variables into settings: {e}");
                 std::process::exit(1)
             }
         }

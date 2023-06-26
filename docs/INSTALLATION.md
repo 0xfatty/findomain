@@ -12,6 +12,15 @@ We offer binaries ready to use for the following platforms (all are for 64 bits 
 
 If you need to run Findomain in another platform, continue reading the documentation.
 
+Note: You need a utility to unpack the ZIP downloaded artifacts, in Linux you can use [unzip](http://infozip.sourceforge.net/UnZip.html), in Windows you can use [7zip](https://www.7-zip.org/download.html).
+
+## Prerequisites
+
+Findomain requires the following software to be installed:
+
+* Google Chrome or Chromium (for the screenshoting functionality).
+* PostgreSQL (for the subdomains monitoring functionality). See [Subdomains Monitoring](INSTALLATION.md#subdomains-monitoring) for more details.
+
 # Build for 32 bits or another platform
 
 ## Binaries
@@ -20,9 +29,11 @@ The only 32-bit platform with precompiled binaries is Linux since the 4.0.1 rele
 
 
 ```
-$ wget https://github.com/findomain/findomain/releases/latest/download/findomain-linux-i386
-$ chmod +x findomain-linux-i386
-$ ./findomain-linux-i386
+$ curl -LO https://github.com/findomain/findomain/releases/latest/download/findomain-linux-i386.zip
+$ unzip findomain-linux-i386.zip
+$ chmod +x findomain
+$ sudo mv findomain /usr/bin/findomain
+$ findomain --help
 ```
 
 If you want to build the tool for your 32 bits system or another platform, follow these steps:
@@ -60,48 +71,68 @@ $ sudo cp target/release/findomain /usr/bin/
 $ findomain
 ```
 
-# Installation in Linux using compiled artifacts
+# Installation in Linux using precompiled artifacts
 
-```
-$ wget https://github.com/findomain/findomain/releases/latest/download/findomain-linux
-$ chmod +x findomain-linux
-$ ./findomain-linux
-```
-**If you are using the [ArchLinux](https://archlinux.org) distribution or any ArchLinux-based distro, you just need to use:**
+**If you are using [ArchLinux](https://archlinux.org) or any ArchLinux-based distro, you can use the following command:**
 
 ```
 $ pacman -S findomain
 ```
-**If you are using the [Pentoo](https://pentoo.ch) distribution, you just need to use:**
+**If you are using [Pentoo](https://pentoo.ch), you can use the following command:**
 
 ```
 $ emerge -a findomain
 ```
 
+**If you are using [NixOs](https://nixos.org/), you can use the following command:**
+
+```
+$ nix-env -iA findomain
+```
+
+**If you are using [Homebrew](https://brew.sh/) on your OS, you can use the following command:**
+
+```
+$ brew install findomain
+```
+
+Otherwise, you can use the following commands:
+
+```
+$ curl -LO https://github.com/findomain/findomain/releases/latest/download/findomain-linux.zip
+$ unzip findomain-linux.zip
+$ chmod +x findomain
+$ sudo mv findomain /usr/bin/findomain
+$ findomain --help
+```
+
 # Installation Aarch64
 
 ```
-$ wget https://github.com/findomain/findomain/releases/latest/download/findomain-aarch64
-$ chmod +x findomain-aarch64
-$ ./findomain-aarch64
+$ curl -LO https://github.com/findomain/findomain/releases/latest/download/findomain-aarch64.zip
+$ unzip findomain-aarch64.zip
+$ chmod +x findomain
+$ sudo mv findomain /usr/bin/findomain
+$ findomain --help
 ```
 
 # Installation ARMv7
 
 ```
-$ wget https://github.com/findomain/findomain/releases/latest/download/findomain-armv7
-$ chmod +x findomain-armv7
-$ ./findomain-armv7
+$ curl -LO https://github.com/findomain/findomain/releases/latest/download/findomain-armv7.zip
+$ unzip findomain-armv7.zip
+$ chmod +x findomain
+$ sudo mv findomain /usr/bin/findomain
+$ findomain --help
 ```
 
 # Installation Windows
 
-Download the binary from https://github.com/findomain/findomain/releases/latest/download/findomain-windows.exe
+Download the binary from https://github.com/findomain/findomain/releases/latest/download/findomain-windows.exe.zip and extract it.
 
-Open a CMD shell and go to the dir where findomain-windows.exe was downloaded.
+Open a CMD shell and go to the dir where findomain.exe was downloaded.
 
-Exec: `findomain-windows` in the CMD shell.
-
+Exec: `findomain.exe --help` in the CMD shell.
 
 # Installation MacOS
 
@@ -116,16 +147,10 @@ $ findomain
 **Manually from the repo:**
 
 ```
-$ wget https://github.com/findomain/findomain/releases/latest/download/findomain-osx
-$ chmod +x findomain-osx.dms
-$ ./findomain-osx.dms
-```
-
-# Installation NixOS
-
-```
-$ nix-env -i findomain
-$ findomain
+$ curl -LO https://github.com/findomain/findomain/releases/latest/download/findomain-osx.zip
+# Extract the ZIP file.
+$ chmod +x findomain.dms
+$ ./findomain.dms --help
 ```
 
 # Installation Docker
@@ -146,17 +171,17 @@ Please see [the documentation](docker/).
 
 # Updating Findomain to latest version
 
-To update Findomain to latest version, you can be in some scenarios:
+To update Findomain to latest version, please consider one of the following scenarios:
 
-1. **You downloaded a precompiled binary:** If you are using a precompiled binary, then you need to download the new binary.
-2. **You are using it in ArchLinux or any Arch-based distro:** Just run `pacman -Syu`
-3. **You have cloned the repo and compiled it from source:** You just need to go to the folder where the repo is cloned and run: `git pull && cargo build --release`, when finish, you have your executable in `target/release/findomain`.
-4. **You downloaded a source code release and compiled it:** You need to download the new source code release and compile it again.
-5. **I used cargo install findomain:** then just run `cargo install findomain`.
+1. **If you downloaded a precompiled binary:** If you are using a precompiled binary, then you need to download the new binary.
+2. **If you are using it in ArchLinux or any Arch-based distro:** Just run `pacman -Syu`
+3. **If you have cloned the repo and compiled it from source:** You just need to go to the folder where the repo is cloned and run: `git pull && cargo build --release`, when finish, you have your executable in `target/release/findomain`.
+4. **If you downloaded a source code release and compiled it:** You need to download the new source code release and compile it again.
+5. **If you used cargo install findomain:** then just run `cargo install findomain`.
 
 # Access tokens configuration
 
-In in section you can found the steps about how to configure APIs that need or can be used with access tokens.
+In this section you can found the steps about how to configure APIs that need or can be used with access tokens.
 
 # Configuring the Facebook API
 
@@ -171,12 +196,13 @@ Since Findomain 0.2.4 you don't need to explicity set the `findomain_fb_token` v
 The first step is get your Facebook application token. You need to create a Webhook, follow the next steps:
 
 1. Open https://developers.facebook.com/apps/
-2. Click in "Create App", put the name that you want and send the information.
-3. In the next screen, select "Configure" in the Webhooks option.
-4. Go to "Configuration" -> "Basic" and click on "Show" in the "App secret key" option.
-5. Now open in your browser the following URL: https://graph.facebook.com/oauth/access_token?client_id=your-app-id&client_secret=your-secret-key&grant_type=client_credentials
+2. Click "Create App", select "None" and then "Next".
+3. Put the "Display name" that you want and click "Next".
+4. In the next screen, search for "Webhooks" and click on "Set up".
+5. Go to "Configuration" -> "Basic" and click on "Show" in the "App secret key" option.
+6. Now open in your browser the following URL: https://graph.facebook.com/oauth/access_token?client_id={your-app-id}&client_secret={your-secret-key}&grant_type=client_credentials
 
-**Note:** replace `your-app-id` by the number of your webhook identifier and `your-secret-key` for the key that you got in the 4th step.
+**Note:** replace `{your-app-id}` by the number of your webhook identifier and `{your-secret-key}` for the key that you got in the 4th step.
 
 6. You should have a JSON like:
 
@@ -206,7 +232,7 @@ Put in the CMD command prompt:
 > set findomain_fb_token=YourAccessToken && findomain -(options)
 ```
 
-**Note:** In Windows you need to scape special characters like `|`, add `^` before the special character to scape it and don't quote the token. Example:  `set findomain_fb_token=xxxxxxx^|yyyyyyyy && findomain -(options)`
+**Note:** In Windows you need to escape special characters like `|`, add `^` before the special character to escape it and don't quote the token. Example:  `set findomain_fb_token=xxxxxxx^|yyyyyyyy && findomain -(options)`
 
 **Tip:** If you don't want to write the access token everytime that you run findomain, export the `findomain_fb_token` in Unix based systems like putting `export findomain_fb_token="YourAccessToken"` into your `.bashrc` and set the `findomain_fb_token` variable in your Windows system as [described here](https://www.computerhope.com/issues/ch000549.htm).
 
@@ -235,7 +261,7 @@ Put in the CMD command prompt:
 > set findomain_spyse_token=YourAccessToken && findomain -(options)
 ```
 
-**Note:** In Windows you need to scape special characters like `|`, add `^` before the special character to scape it and don't quote the token. Example:  `set findomain_spyse_token=xxxxxxx^|yyyyyyyy && findomain -(options)`
+**Note:** In Windows you need to escape special characters like `|`, add `^` before the special character to escape it and don't quote the token. Example:  `set findomain_spyse_token=xxxxxxx^|yyyyyyyy && findomain -(options)`
 
 **Tip:** If you don't want to write the access token everytime that you run findomain, export the `findomain_spyse_token` in Unix based systems like putting `export findomain_spyse_token="YourAccessToken"` into your `.bashrc` and set the `findomain_spyse_token` variable in your Windows system as [described here](https://www.computerhope.com/issues/ch000549.htm).
 
@@ -299,14 +325,14 @@ Put in the CMD command prompt:
 > set findomain_securitytrails_token=YourAccessToken && findomain -(options)
 ```
 
-**Note:** In Windows you need to scape special characters like `|`, add `^` before the special character to scape it and don't quote the token. Example:  `set findomain_securitytrails_token=xxxxxxx^|yyyyyyyy && findomain -(options)`
+**Note:** In Windows you need to escape special characters like `|`, add `^` before the special character to escape it and don't quote the token. Example:  `set findomain_securitytrails_token=xxxxxxx^|yyyyyyyy && findomain -(options)`
 
 **Tip:** If you don't want to write the access token everytime that you run findomain, export the `findomain_fb_token` in Unix based systems like putting `export findomain_securitytrails_token="YourAccessToken"` into your `.bashrc` and set the `findomain_fb_token` variable in your Windows system as [described here](https://www.computerhope.com/issues/ch000549.htm).
 
 
 # Subdomains Monitoring
 
-Findomain is capable of monitor a specific domain or a list of domains for new subdomains and send the data to [Slack](https://slack.com/), [Discord](https://discordapp.com) or [Telegram](https://telegram.org) webhooks. All what you need is a server or your computer with  [PostgreSQL](https://www.postgresql.org/) database server installed. Have in mind that you can have only a central server/computer with PostgreSQL installed and connect to it from anywhere to perform the monitoring tasks.
+Findomain is capable of monitoring a specific domain or a list of domains for new subdomains and sending the data to [Slack](https://slack.com/), [Discord](https://discordapp.com) or [Telegram](https://telegram.org) webhooks. All you need is a server or your computer with [PostgreSQL](https://www.postgresql.org/) database server installed. Have in mind that you can have only a central server/computer with PostgreSQL installed and connect to it from anywhere to perform the monitoring tasks.
 
 **IMPORTANT NOTE:** Findomain is a subdomains enumeration and monitor tool, not a job scheduler. If you want to run findomain automatically then you need to configure a job scheduler like [systemd-timers](https://wiki.archlinux.org/index.php/Systemd/Timers) or the well known [CRON](https://wiki.archlinux.org/index.php/Cron) in \*NIX systems, Termux in Android or MAC and the [Windows Task Scheduler](https://docs.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-start-page) in Windows.
 
@@ -345,7 +371,7 @@ findomain_telegrambot_chat_id: Unique identifier for the target chat or username
 
 **Default values while connecting to database server**
 
-Findomain have some default values that are used when they are not set. They are listed below:
+Findomain has some default values that are used when they are not set. They are listed below:
 
 1) If you only specify the `-m` flag without more arguments or don't specify one of the options Findomain sets:
 
@@ -385,7 +411,7 @@ $ findomain_discord_webhook='https://discordapp.com/api/webhooks/XXXXXXXXXXXXXXX
 
 See `findomain -h/--help` to see all the options.
 
-For subdomains monitoring examples [Subdomains Monitoring](https://github.com/findomain/findomain/blob/master/README.md#subdomains-monitoring) for more information.
+For subdomains monitoring examples [Subdomains Monitoring](INSTALLATION.md#subdomains-monitoring) for more information.
 
 You can use the tool in two ways, only discovering the domain name or discovering the domain + the IP address.
 
@@ -419,14 +445,14 @@ You can use the tool in two ways, only discovering the domain name or discoverin
 
 `findomain -f file_with_domains.txt -r -u multiple_domains.txt`
 
-8. Query the Findomain database created with [Subdomains Monitoring](README.md#subdomains-monitoring).
+8. Query the Findomain database created with [Subdomains Monitoring](INSTALLATION.md#subdomains-monitoring).
 
 `findomain -t example.com --query-database`
 
-9. Query the Findomain database created with [Subdomains Monitoring](README.md#subdomains-monitoring) and save results to a custom filename.
+9. Query the Findomain database created with [Subdomains Monitoring](INSTALLATION.md#subdomains-monitoring) and save results to a custom filename.
 
 `findomain -t example.com --query-database -u subdomains.txt`
 
-10. Import subdomains from several files and work with them in the [Subdomains Monitoring](README.md#subdomains-monitoring) process:
+10. Import subdomains from several files and work with them in the [Subdomains Monitoring](INSTALLATION.md#subdomains-monitoring) process:
 
 `findomain --import-subdomains file1.txt file2.txt file3.txt -m -t example.com`

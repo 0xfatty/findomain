@@ -1,5 +1,6 @@
 use {
-    crate::{errors::*, logic, misc, structs::Args, utils},
+    crate::{errors::Result, logic, misc, structs::Args, utils},
+    anyhow::Context,
     std::{
         collections::HashSet,
         fs::{self, File, OpenOptions},
@@ -9,6 +10,7 @@ use {
     },
 };
 
+#[must_use]
 pub fn return_file_targets(args: &Args, files: Vec<String>) -> Vec<String> {
     let mut targets: Vec<String> = Vec::new();
     files.clone().dedup();
@@ -25,13 +27,10 @@ pub fn return_file_targets(args: &Args, files: Vec<String>) -> Vec<String> {
             }
             Err(e) => {
                 if args.files.len() == 1 {
-                    println!("Can not open file {}. Error: {}", f, e);
+                    println!("Can not open file {f}. Error: {e}");
                     std::process::exit(1)
                 } else if !args.quiet_flag {
-                    println!(
-                        "Can not open file {}, working with next file. Error: {}",
-                        f, e
-                    );
+                    println!("Can not open file {f}, working with next file. Error: {e}");
                 }
             }
         }
@@ -119,6 +118,7 @@ pub fn write_to_file(data: &str, file_name: &Option<std::fs::File>) -> Result<()
     Ok(())
 }
 
+#[must_use]
 pub fn return_output_file(args: &Args) -> Option<File> {
     if args.file_name.is_empty() || !args.with_output {
         None
@@ -128,7 +128,7 @@ pub fn return_output_file(args: &Args) -> Option<File> {
                 .append(true)
                 .create(true)
                 .open(&args.file_name)
-                .with_context(|_| format!("Can't create file 📁 {}", &args.file_name))
+                .with_context(|| format!("Can't create file 📁 {}", &args.file_name))
                 .unwrap(),
         )
     }
@@ -136,8 +136,8 @@ pub fn return_output_file(args: &Args) -> Option<File> {
 
 pub fn check_output_file_exists(file_name: &str) -> Result<()> {
     if Path::new(&file_name).exists() && Path::new(&file_name).is_file() {
-        let backup_file_name = file_name.replace(&file_name.split('.').last().unwrap(), "old.txt");
-        fs::rename(&file_name, &backup_file_name).with_context(|_| {
+        let backup_file_name = file_name.replace(file_name.split('.').last().unwrap(), "old.txt");
+        fs::rename(file_name, &backup_file_name).with_context(|| {
             format!(
                 "The file {} already exists but Findomain can't backup the file to {}. Please run the tool with a more privileged user or try in a different directory.",
                 &file_name, &backup_file_name,
@@ -147,22 +147,33 @@ pub fn check_output_file_exists(file_name: &str) -> Result<()> {
     Ok(())
 }
 
+#[must_use]
 pub fn check_image_path(screenshots_dir: &str, target: &str) -> bool {
-    let full_path = format!("{}/{}/", screenshots_dir, target);
+    let full_path = format!("{screenshots_dir}/{target}/");
     (Path::new(&full_path).exists() && Path::new(&full_path).is_dir())
         || fs::create_dir_all(&full_path).is_ok()
 }
 
+#[must_use]
 pub fn check_no_empty(filename: &str) -> bool {
     let mut lines: Vec<String> = BufReader::new(File::open(filename).unwrap())
         .lines()
-        .map(|x| x.unwrap())
+        .map(std::result::Result::unwrap)
         .collect();
     lines.retain(|x| !x.is_empty());
     !lines.is_empty()
 }
 
+#[must_use]
 pub fn check_full_path(full_path: &str) -> bool {
     (Path::new(full_path).exists() && Path::new(full_path).is_dir())
         || fs::create_dir_all(full_path).is_ok()
+}
+
+pub fn string_to_file(mut data: String, mut file: File) -> Result<()> {
+    if !data.ends_with('\n') && !data.ends_with("\r\n") {
+        data += "\n";
+    }
+    file.write_all(data.as_bytes())?;
+    Ok(())
 }

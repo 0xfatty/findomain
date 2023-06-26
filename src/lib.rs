@@ -5,24 +5,27 @@ extern crate serde_derive;
 extern crate lazy_static;
 
 pub mod args;
+pub mod database;
 pub mod errors;
 pub mod files;
+pub mod logic;
 pub mod structs;
+pub mod utils;
 
 mod alerts;
-mod database;
 mod external_subs;
-mod logic;
 mod misc;
 mod networking;
 mod port_scanner;
 mod resolvers;
 mod screenshots;
 mod sources;
-mod utils;
 
 use {
-    crate::{errors::*, structs::Args},
+    crate::{
+        errors::{check_monitoring_parameters, Result},
+        structs::Args,
+    },
     std::{thread, time::Duration},
 };
 
@@ -52,39 +55,59 @@ pub fn get_subdomains(args: &mut Args) -> Result<()> {
     }
     if args.query_database || args.query_jobname {
         database::query_findomain_database(args)?
-    } else if args.bruteforce {
-        args.subdomains = args
-            .wordlists_data
-            .iter()
-            .map(|target| format!("{}.{}", target, &args.target))
-            .collect();
-        logic::manage_subdomains_data(args)?
-    } else {
-        if args.monitoring_flag && !args.no_monitor {
-            check_monitoring_parameters(args)?
-        }
-        args.subdomains = networking::search_subdomains(args);
-        if args.subdomains.is_empty() {
-            eprintln!(
-                "\nNo subdomains were found for the target: {} ¡😭!\n",
-                &args.target
-            );
-        } else {
-            logic::works_with_data(args)?
-        }
-        if !args.quiet_flag
-            && args.rate_limit != 0
-            && (args.from_file_flag || args.from_stdin)
-            && !args.is_last_target
-            && !args.monitoring_flag
-            && !args.no_monitor
-        {
-            println!(
-                "Rate limit set to {} seconds, waiting to start next enumeration.",
-                args.rate_limit
-            );
-            thread::sleep(Duration::from_secs(args.rate_limit))
-        }
     }
+
+    if args.bruteforce {
+        args.subdomains.extend(
+            args.wordlists_data
+                .iter()
+                .map(|target| format!("{target}.{}", &args.target)),
+        );
+    }
+
+    if args.monitoring_flag && !args.no_monitor {
+        check_monitoring_parameters(args)?
+    }
+
+    if !args.no_discover {
+        let discovered_subdomains = networking::search_subdomains(args);
+        args.subdomains.extend(discovered_subdomains);
+    };
+
+    if !args.import_subdomains_from.is_empty() {
+        let base_target = format!(".{}", args.target);
+        let mut imported_subdomains =
+            files::return_file_targets(args, args.import_subdomains_from.clone());
+        imported_subdomains.retain(|target| !target.is_empty() && logic::validate_target(target));
+        imported_subdomains.retain(|target| {
+            !target.is_empty() && logic::validate_subdomain(&base_target, target, args)
+        });
+        args.subdomains.extend(imported_subdomains);
+    }
+
+    if args.subdomains.is_empty() {
+        eprintln!(
+            "\nNo subdomains were found for the target: {} ¡😭!\n",
+            &args.target
+        );
+    } else {
+        logic::works_with_data(args)?
+    }
+    if !args.quiet_flag
+        && args.rate_limit != 0
+        && (args.from_file_flag || args.from_stdin)
+        && !args.is_last_target
+        && !args.monitoring_flag
+        && !args.no_monitor
+    {
+        println!(
+            "Rate limit set to {} seconds, waiting to start next enumeration.",
+            args.rate_limit
+        );
+        thread::sleep(Duration::from_secs(args.rate_limit))
+    }
+
+    args.subdomains.clear();
+
     Ok(())
 }

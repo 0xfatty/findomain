@@ -1,6 +1,11 @@
 use {
-    crate::{errors::*, misc, networking, utils::return_reqwest_client},
+    crate::{
+        errors::{check_json_errors, check_request_errors},
+        misc, networking,
+        utils::return_reqwest_client,
+    },
     postgres::NoTls,
+    reqwest::header::{self, HeaderMap},
     serde::de::DeserializeOwned,
     std::{collections::HashSet, time::Duration},
 };
@@ -67,33 +72,38 @@ impl IntoSubdomains for ResponseDataFacebook {
 }
 
 #[derive(Deserialize, Eq, PartialEq, Hash)]
-struct SubdomainsSpyse {
-    domain: String,
+struct RootDataSpyse {
+    pub data: SpyseData,
 }
 
-#[derive(Deserialize, Eq, PartialEq)]
-struct ResponseDataSpyse {
-    records: HashSet<SubdomainsSpyse>,
+#[derive(Deserialize, Eq, PartialEq, Hash)]
+struct SpyseData {
+    pub items: Vec<SpyseItem>,
 }
 
-impl IntoSubdomains for ResponseDataSpyse {
+#[derive(Deserialize, Eq, PartialEq, Hash)]
+struct SpyseItem {
+    pub name: String,
+}
+
+impl IntoSubdomains for RootDataSpyse {
     fn into_subdomains(self) -> HashSet<String> {
-        self.records.into_iter().map(|sub| sub.domain).collect()
+        self.data.items.into_iter().map(|sub| sub.name).collect()
     }
 }
 
 #[derive(Deserialize)]
-#[allow(non_snake_case)]
+#[serde(rename_all = "camelCase")]
 struct SubdomainsBufferover {
-    FDNS_A: HashSet<String>,
+    #[serde(rename = "Results")]
+    results: HashSet<String>,
 }
 
 impl IntoSubdomains for SubdomainsBufferover {
     fn into_subdomains(self) -> HashSet<String> {
-        self.FDNS_A
+        self.results
             .iter()
-            .map(|sub| sub.split(','))
-            .flatten()
+            .flat_map(|sub| sub.split(','))
             .map(str::to_owned)
             .collect()
     }
@@ -156,12 +166,6 @@ struct SubdomainsThreatminer {
 }
 
 #[derive(Deserialize, Eq, PartialEq, Hash)]
-pub struct SubdomainsCtsearch {
-    #[serde(rename = "subjectDN")]
-    pub subject_dn: String,
-}
-
-#[derive(Deserialize, Eq, PartialEq, Hash)]
 struct SubdomainsC99 {
     subdomain: String,
 }
@@ -180,6 +184,11 @@ impl IntoSubdomains for ResponseDataC99 {
     }
 }
 
+#[derive(Deserialize, Eq, PartialEq)]
+struct SubdomainsFullHunt {
+    hosts: HashSet<String>,
+}
+
 impl IntoSubdomains for SubdomainsThreatminer {
     fn into_subdomains(self) -> HashSet<String> {
         self.results.into_iter().collect()
@@ -190,7 +199,7 @@ fn get_from_http_api<T: DeserializeOwned + IntoSubdomains>(
     url: &str,
     name: &str,
 ) -> Option<HashSet<String>> {
-    match return_reqwest_client(15).get(url).send() {
+    match return_reqwest_client(60).get(url).send() {
         Ok(data) => {
             if networking::check_http_response_code(name, &data) {
                 match data.json::<T>() {
@@ -220,7 +229,7 @@ pub fn get_certspotter_subdomains(
         misc::show_searching_msg("CertSpotter")
     }
 
-    let mut request = return_reqwest_client(15).get(url_api_certspotter);
+    let mut request = return_reqwest_client(60).get(url_api_certspotter);
 
     if !certspotter_token.is_empty() {
         request = request.bearer_auth(certspotter_token);
@@ -256,7 +265,7 @@ pub fn get_crtsh_subdomains(url_api_crtsh: &str, quiet_flag: bool) -> Option<Has
     if !quiet_flag {
         misc::show_searching_msg("Crtsh")
     }
-    match return_reqwest_client(15).get(url_api_crtsh).send() {
+    match return_reqwest_client(60).get(url_api_crtsh).send() {
         Ok(data_crtsh) => {
             if networking::check_http_response_code("Crtsh", &data_crtsh) {
                 match data_crtsh.json::<HashSet<SubdomainsCrtsh>>() {
@@ -291,7 +300,7 @@ pub fn get_securitytrails_subdomains(
     if !quiet_flag {
         misc::show_searching_msg("SecurityTrails")
     }
-    match return_reqwest_client(15).get(url_api_securitytrails).send() {
+    match return_reqwest_client(60).get(url_api_securitytrails).send() {
         Ok(data_securitytrails) => {
             if networking::check_http_response_code("SecurityTrails", &data_securitytrails) {
                 match data_securitytrails.json::<SubdomainsSecurityTrails>() {
@@ -299,7 +308,7 @@ pub fn get_securitytrails_subdomains(
                         domains_securitytrails
                             .subdomains
                             .into_iter()
-                            .map(|sub| format!("{}.{}", sub, target))
+                            .map(|sub| format!("{sub}.{target}"))
                             .collect(),
                     ),
                     Err(e) => {
@@ -353,8 +362,7 @@ pub fn get_crtsh_db_subdomains(
             Err(e) => {
                 if !quiet_flag {
                     println!(
-                    "❌ A error has occurred while querying the Crtsh database. Error: {}. Trying the API method...",
-                    e);
+                    "❌ A error has occurred while querying the Crtsh database. Error: {e}. Trying the API method...");
                 }
                 get_crtsh_subdomains(url_api_crtsh, quiet_flag)
             }
@@ -362,23 +370,12 @@ pub fn get_crtsh_db_subdomains(
         Err(e) => {
             if !quiet_flag {
                 println!(
-                "❌ A error has occurred while connecting to the Crtsh database. Error: {}. Trying the API method...",
-                e
+                "❌ A error has occurred while connecting to the Crtsh database. Error: {e}. Trying the API method..."
             );
             }
             get_crtsh_subdomains(url_api_crtsh, quiet_flag)
         }
     }
-}
-
-pub fn get_virustotal_subdomains(
-    url_api_virustotal: &str,
-    quiet_flag: bool,
-) -> Option<HashSet<String>> {
-    if !quiet_flag {
-        misc::show_searching_msg("Virustotal")
-    }
-    get_from_http_api::<ResponseDataVirusTotal>(url_api_virustotal, "Virustotal")
 }
 
 pub fn get_sublist3r_subdomains(
@@ -398,11 +395,92 @@ pub fn get_facebook_subdomains(url_api_fb: &str, quiet_flag: bool) -> Option<Has
     get_from_http_api::<ResponseDataFacebook>(url_api_fb, "Facebook")
 }
 
-pub fn get_spyse_subdomains(url_api_spyse: &str, quiet_flag: bool) -> Option<HashSet<String>> {
+pub fn get_fullhunt_subdomains(
+    url_api_fullhunt: &str,
+    fullhunt_token: &str,
+    quiet_flag: bool,
+) -> Option<HashSet<String>> {
     if !quiet_flag {
-        misc::show_searching_msg("Spyse")
+        misc::show_searching_msg("FullHunt")
     }
-    get_from_http_api::<ResponseDataSpyse>(url_api_spyse, "Spyse")
+
+    let mut request = return_reqwest_client(60).get(url_api_fullhunt);
+
+    if !fullhunt_token.is_empty() {
+        request = request.header("X-API-KEY", fullhunt_token);
+    }
+
+    match request.send() {
+        Ok(data_fullhunt) => {
+            if networking::check_http_response_code("FullHunt", &data_fullhunt) {
+                match data_fullhunt.json::<SubdomainsFullHunt>() {
+                    Ok(domains_fullhunt) => Some(domains_fullhunt.hosts.into_iter().collect()),
+                    Err(e) => {
+                        check_json_errors(e, "FullHunt");
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        }
+        Err(e) => {
+            check_request_errors(e, "FullHunt");
+            None
+        }
+    }
+}
+
+pub fn get_spyse_subdomains(
+    target: &str,
+    name: &str,
+    api_key: &str,
+    quiet_flag: bool,
+) -> Option<HashSet<String>> {
+    if !quiet_flag {
+        misc::show_searching_msg(name)
+    }
+    let url = "https://api.spyse.com/v4/data/domain/search";
+    let body = serde_json::json!({
+        "limit": 100,
+        "offset": 0,
+        "search_params": [
+            {
+                "name": {
+                    "operator": "ends",
+                    "value": target,
+                }
+            }
+        ],
+    });
+    let mut headers = HeaderMap::new();
+
+    headers.insert(header::ACCEPT, "application/json".parse().unwrap());
+    headers.insert(header::CONTENT_TYPE, "application/json".parse().unwrap());
+
+    let mut request_builder = return_reqwest_client(60).post(url);
+    request_builder = request_builder.headers(headers);
+    request_builder = request_builder.bearer_auth(api_key);
+
+    match request_builder.json(&body).send() {
+        Ok(data) => {
+            if networking::check_http_response_code(name, &data) {
+                match data.json::<RootDataSpyse>() {
+                    Ok(json) => Some(json.into_subdomains()),
+                    Err(e) => {
+                        check_json_errors(e, name);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        }
+        Err(e) => {
+            check_request_errors(e, name);
+            None
+        }
+    }
 }
 
 pub fn get_anubisdb_subdomains(
@@ -416,13 +494,39 @@ pub fn get_anubisdb_subdomains(
 }
 
 pub fn get_bufferover_subdomains(
-    url_api_bufferover: &str,
+    url: &str,
+    name: &str,
+    api_key: &str,
     quiet_flag: bool,
 ) -> Option<HashSet<String>> {
     if !quiet_flag {
-        misc::show_searching_msg("Bufferover")
+        misc::show_searching_msg(name)
     }
-    get_from_http_api::<SubdomainsBufferover>(url_api_bufferover, "Bufferover")
+    let mut request_builder = return_reqwest_client(60).get(url);
+    request_builder = request_builder.header("x-api-key", api_key);
+    if name == "BufferOver Paid" {
+        request_builder =
+            request_builder.header("x-rapidapi-host", "bufferover-run-tls.p.rapidapi.com");
+    }
+    match request_builder.send() {
+        Ok(data) => {
+            if networking::check_http_response_code(name, &data) {
+                match data.json::<SubdomainsBufferover>() {
+                    Ok(json) => Some(json.into_subdomains()),
+                    Err(e) => {
+                        check_json_errors(e, name);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        }
+        Err(e) => {
+            check_request_errors(e, name);
+            None
+        }
+    }
 }
 
 pub fn get_threatcrowd_subdomains(
@@ -470,48 +574,6 @@ pub fn get_c99_subdomains(url_api_c99: &str, quiet_flag: bool) -> Option<HashSet
         misc::show_searching_msg("C99")
     }
     get_from_http_api::<ResponseDataC99>(url_api_c99, "C99")
-}
-
-pub fn get_ctsearch_subdomains(
-    url_api_ctsearch: &str,
-    quiet_flag: bool,
-) -> Option<HashSet<String>> {
-    if !quiet_flag {
-        misc::show_searching_msg("Ctsearch")
-    }
-    match return_reqwest_client(15).get(url_api_ctsearch).send() {
-        Ok(data_ctsearch) => {
-            if networking::check_http_response_code("Ctsearch", &data_ctsearch) {
-                match data_ctsearch.json::<HashSet<SubdomainsCtsearch>>() {
-                    Ok(domains_ctsearch) => Some(
-                        domains_ctsearch
-                            .iter()
-                            .map(|sub| {
-                                let str_vec =
-                                    sub.subject_dn.split(&['=', ','][..]).collect::<Vec<&str>>();
-                                if str_vec.len() > 1 {
-                                    str_vec[1]
-                                } else {
-                                    ""
-                                }
-                            })
-                            .map(str::to_owned)
-                            .collect(),
-                    ),
-                    Err(e) => {
-                        check_json_errors(e, "Ctsearch");
-                        None
-                    }
-                }
-            } else {
-                None
-            }
-        }
-        Err(e) => {
-            check_request_errors(e, "Ctsearch");
-            None
-        }
-    }
 }
 
 pub fn get_archiveorg_subdomains(
