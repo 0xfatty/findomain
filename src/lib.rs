@@ -44,17 +44,17 @@ pub fn get_subdomains(args: &mut Args) -> Result<()> {
     //    }
     //  std::process::exit(1);
     if args.take_screenshots {
-        logic::test_chrome_availability(args)
+        logic::test_chrome_availability(args);
     }
     if (args.monitoring_flag || args.no_monitor) && args.database_checker_counter == 0 {
         logic::test_database_connection(args);
-        args.database_checker_counter += 1
+        args.database_checker_counter += 1;
     }
     if !args.quiet_flag && !args.query_jobname && !args.query_database {
-        println!("\nTarget ==> {}\n", &args.target)
+        println!("\nTarget ==> {}\n", &args.target);
     }
     if args.query_database || args.query_jobname {
-        database::query_findomain_database(args)?
+        database::query_findomain_database(args)?;
     }
 
     if args.bruteforce {
@@ -66,7 +66,7 @@ pub fn get_subdomains(args: &mut Args) -> Result<()> {
     }
 
     if args.monitoring_flag && !args.no_monitor {
-        check_monitoring_parameters(args)?
+        check_monitoring_parameters(args)?;
     }
 
     if !args.no_discover {
@@ -85,13 +85,13 @@ pub fn get_subdomains(args: &mut Args) -> Result<()> {
         args.subdomains.extend(imported_subdomains);
     }
 
-    if args.subdomains.is_empty() {
+    if args.subdomains.is_empty() && !args.quiet_flag {
         eprintln!(
             "\nNo subdomains were found for the target: {} ¡😭!\n",
             &args.target
         );
     } else {
-        logic::works_with_data(args)?
+        logic::works_with_data(args)?;
     }
     if !args.quiet_flag
         && args.rate_limit != 0
@@ -104,7 +104,7 @@ pub fn get_subdomains(args: &mut Args) -> Result<()> {
             "Rate limit set to {} seconds, waiting to start next enumeration.",
             args.rate_limit
         );
-        thread::sleep(Duration::from_secs(args.rate_limit))
+        thread::sleep(Duration::from_secs(args.rate_limit));
     }
 
     args.subdomains.clear();
